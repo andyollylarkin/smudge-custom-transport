@@ -1,4 +1,4 @@
-package updtransport
+package internal
 
 import "net"
 

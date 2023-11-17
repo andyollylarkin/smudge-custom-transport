@@ -5,6 +5,7 @@ import (
 	"net"
 
 	"github.com/andyollylarkin/smudge-custom-transport/transport"
+	"github.com/andyollylarkin/smudge-custom-transport/transport/upd_transport/internal"
 )
 
 type UDPTransport struct{}
@@ -20,8 +21,8 @@ func (ut *UDPTransport) Listen(network string, addr transport.SockAddr) (transpo
 		return nil, err
 	}
 
-	genericConn := &UDPConn{
-		underlyingConn: udpConn,
+	genericConn := &internal.UDPConn{
+		UnderlyingConn: udpConn,
 	}
 
 	return genericConn, nil
@@ -55,8 +56,8 @@ func (ut *UDPTransport) Dial(ctx context.Context, laddr transport.SockAddr,
 		return nil, err
 	}
 
-	genericConn := &UDPConn{
-		underlyingConn: udpConn,
+	genericConn := &internal.UDPConn{
+		UnderlyingConn: udpConn,
 	}
 
 	return genericConn, nil
@@ -68,7 +69,7 @@ func (ut *UDPTransport) ResolveAddr(network string, addr string) (transport.Sock
 		return nil, err
 	}
 
-	sa := &UDPAddr{
+	sa := &internal.UDPAddr{
 		sockAddr,
 	}
 

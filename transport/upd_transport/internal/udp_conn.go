@@ -1,4 +1,4 @@
-package updtransport
+package internal
 
 import (
 	"net"
@@ -8,37 +8,37 @@ import (
 )
 
 type UDPConn struct {
-	underlyingConn *net.UDPConn
+	UnderlyingConn *net.UDPConn
 }
 
 // Read reads data from the connection.
 // Read can be made to time out and return an error after a fixed
 // time limit; see SetDeadline and SetReadDeadline.
 func (uc *UDPConn) Read(b []byte) (n int, err error) {
-	return uc.underlyingConn.Read(b)
+	return uc.UnderlyingConn.Read(b)
 }
 
 // Write writes data to the connection.
 // Write can be made to time out and return an error after a fixed
 // time limit; see SetDeadline and SetWriteDeadline.
 func (uc *UDPConn) Write(b []byte) (n int, err error) {
-	return uc.underlyingConn.Write(b)
+	return uc.UnderlyingConn.Write(b)
 }
 
 // Close closes the connection.
 // Any blocked Read or Write operations will be unblocked and return errors.
 func (uc *UDPConn) Close() error {
-	return uc.underlyingConn.Close()
+	return uc.UnderlyingConn.Close()
 }
 
 // LocalAddr returns the local network address, if known.
 func (uc *UDPConn) LocalAddr() net.Addr {
-	return uc.underlyingConn.LocalAddr()
+	return uc.UnderlyingConn.LocalAddr()
 }
 
 // RemoteAddr returns the remote network address, if known.
 func (uc *UDPConn) RemoteAddr() net.Addr {
-	return uc.underlyingConn.RemoteAddr()
+	return uc.UnderlyingConn.RemoteAddr()
 }
 
 // SetDeadline sets the read and write deadlines associated
@@ -63,14 +63,14 @@ func (uc *UDPConn) RemoteAddr() net.Addr {
 //
 // A zero value for t means I/O operations will not time out.
 func (uc *UDPConn) SetDeadline(t time.Time) error {
-	return uc.underlyingConn.SetDeadline(t)
+	return uc.UnderlyingConn.SetDeadline(t)
 }
 
 // SetReadDeadline sets the deadline for future Read calls
 // and any currently-blocked Read call.
 // A zero value for t means Read will not time out.
 func (uc *UDPConn) SetReadDeadline(t time.Time) error {
-	return uc.underlyingConn.SetReadDeadline(t)
+	return uc.UnderlyingConn.SetReadDeadline(t)
 }
 
 // SetWriteDeadline sets the deadline for future Write calls
@@ -79,11 +79,11 @@ func (uc *UDPConn) SetReadDeadline(t time.Time) error {
 // some of the data was successfully written.
 // A zero value for t means Write will not time out.
 func (uc *UDPConn) SetWriteDeadline(t time.Time) error {
-	return uc.underlyingConn.SetWriteDeadline(t)
+	return uc.UnderlyingConn.SetWriteDeadline(t)
 }
 
 func (uc *UDPConn) ReadFrom(b []byte) (n int, addr transport.SockAddr, error error) {
-	n, udpAddr, err := uc.underlyingConn.ReadFromUDP(b)
+	n, udpAddr, err := uc.UnderlyingConn.ReadFromUDP(b)
 	if err != nil {
 		return 0, nil, err
 	}
