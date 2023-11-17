@@ -17,6 +17,7 @@ limitations under the License.
 package smudge
 
 import (
+	"context"
 	"errors"
 	"math"
 	"net"
@@ -109,7 +110,7 @@ func Begin() {
 
 	// not all transport implementations may support multicast
 	if GetMulticastEnabled() && transportImpl.AllowMulticast() {
-		go listenUDPMulticast(GetMulticastPort())
+		go listenMulticast(GetMulticastPort())
 		go multicastAnnounce(GetMulticastAddress())
 	}
 
@@ -187,7 +188,7 @@ func Begin() {
 // PingNode can be used to explicitly ping a node. Calls the low-level
 // doPingNode(), and outputs a message (and returns an error) if it fails.
 func PingNode(node *Node) error {
-	err := transmitVerbPingUDP(node, currentHeartbeat)
+	err := transmitVerbPing(node, currentHeartbeat)
 	if err != nil {
 		logInfo("Failure to ping", node, "->", err)
 	}
@@ -368,11 +369,11 @@ func listen(port int) error {
 		buf := make([]byte, 2048) // big enough to fit 1280 IPv6 UDP message
 		n, addr, err := c.ReadFrom(buf)
 		if err != nil {
-			logError("UDP read error: ", err)
+			logError("read error: ", err)
 		}
 
 		go func(addr transport.SockAddr, msg []byte) {
-			err = receiveMessageUDP(addr, buf[0:n])
+			err = receiveMessage(addr, buf[0:n])
 			if err != nil {
 				logError(err)
 			}
@@ -380,12 +381,13 @@ func listen(port int) error {
 	}
 }
 
-func listenUDPMulticast(port int) error {
+func listenMulticast(port int) error {
 	addr := GetMulticastAddress()
 	if addr == "" {
 		addr = guessMulticastAddress()
 	}
 
+	// TODO: replace with generic transport
 	listenAddress, err := net.ResolveUDPAddr("udp", addr+":"+strconv.FormatInt(int64(port), 10))
 	if err != nil {
 		return err
@@ -443,6 +445,8 @@ func multicastAnnounce(addr string) error {
 		addr = guessMulticastAddress()
 	}
 
+	// TODO: replace with generic transport
+
 	fullAddr := addr + ":" + strconv.FormatInt(int64(GetMulticastPort()), 10)
 
 	logInfo("Announcing presence on", fullAddr)
@@ -489,7 +493,7 @@ func pingRequestCount() int {
 	return int(mult)
 }
 
-func receiveMessageUDP(addr transport.SockAddr, msgBytes []byte) error {
+func receiveMessage(addr transport.SockAddr, msgBytes []byte) error {
 	msg, err := decodeMessage(addr.GetIPAddr(), msgBytes)
 	if err != nil {
 		return err
@@ -518,13 +522,13 @@ func receiveMessageUDP(addr transport.SockAddr, msgBytes []byte) error {
 	// Handle the verb.
 	switch msg.verb {
 	case verbPing:
-		err = receiveVerbPingUDP(msg)
+		err = receiveVerbPing(msg)
 	case verbAck:
-		err = receiveVerbAckUDP(msg)
+		err = receiveVerbAck(msg)
 	case verbPingRequest:
-		err = receiveVerbForwardUDP(msg)
+		err = receiveVerbForward(msg)
 	case verbNonForwardingPing:
-		err = receiveVerbNonForwardPingUDP(msg)
+		err = receiveVerbNonForwardPing(msg)
 	}
 
 	if err != nil {
@@ -534,7 +538,7 @@ func receiveMessageUDP(addr transport.SockAddr, msgBytes []byte) error {
 	return nil
 }
 
-func receiveVerbAckUDP(msg message) error {
+func receiveVerbAck(msg message) error {
 	key := msg.sender.Address() + ":" + strconv.FormatInt(int64(msg.senderHeartbeat), 10)
 
 	pendingAcks.RLock()
@@ -550,7 +554,7 @@ func receiveVerbAckUDP(msg message) error {
 			// If this is a response to a requested ping, respond to the
 			// callback node
 			if pack.callback != nil {
-				go transmitVerbAckUDP(pack.callback, pack.callbackCode)
+				go transmitVerbAck(pack.callback, pack.callbackCode)
 			} else {
 				// Note the ping response time.
 				notePingResponseTime(pack)
@@ -589,7 +593,7 @@ func notePingResponseTime(pack *pendingAck) {
 		sigmas)
 }
 
-func receiveVerbForwardUDP(msg message) error {
+func receiveVerbForward(msg message) error {
 	// We don't forward to a node that we don't know.
 
 	if len(msg.members) >= 0 &&
@@ -611,18 +615,18 @@ func receiveVerbForwardUDP(msg message) error {
 		pendingAcks.m[key] = &pack
 		pendingAcks.Unlock()
 
-		return transmitVerbGenericUDP(node, nil, verbNonForwardingPing, code)
+		return transmitVerbGeneric(node, nil, verbNonForwardingPing, code)
 	}
 
 	return nil
 }
 
-func receiveVerbPingUDP(msg message) error {
-	return transmitVerbAckUDP(msg.sender, msg.senderHeartbeat)
+func receiveVerbPing(msg message) error {
+	return transmitVerbAck(msg.sender, msg.senderHeartbeat)
 }
 
-func receiveVerbNonForwardPingUDP(msg message) error {
-	return transmitVerbAckUDP(msg.sender, msg.senderHeartbeat)
+func receiveVerbNonForwardPing(msg message) error {
+	return transmitVerbAck(msg.sender, msg.senderHeartbeat)
 }
 
 func startTimeoutCheckLoop() {
@@ -685,11 +689,15 @@ func startTimeoutCheckLoop() {
 	}
 }
 
-func transmitVerbGenericUDP(node *Node, forwardTo *Node, verb messageVerb, code uint32) error {
+func transmitVerbGeneric(node *Node, forwardTo *Node, verb messageVerb, code uint32) error {
 	// Transmit the ACK
-	remoteAddr, err := net.ResolveUDPAddr("udp", node.Address())
+	remoteAddr, err := transportImpl.ResolveAddr(transportImpl.Network(), node.Address())
 
-	c, err := net.DialUDP("udp", nil, remoteAddr)
+	// c, err := net.DialUDP("udp", nil, remoteAddr)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	defer cancel()
+
+	c, err := transportImpl.Dial(ctx, nil, remoteAddr)
 	if err != nil {
 		return err
 	}
@@ -758,14 +766,14 @@ func transmitVerbForwardUDP(node *Node, downstream *Node, code uint32) error {
 	pendingAcks.m[key] = &pack
 	pendingAcks.Unlock()
 
-	return transmitVerbGenericUDP(node, downstream, verbPingRequest, code)
+	return transmitVerbGeneric(node, downstream, verbPingRequest, code)
 }
 
-func transmitVerbAckUDP(node *Node, code uint32) error {
-	return transmitVerbGenericUDP(node, nil, verbAck, code)
+func transmitVerbAck(node *Node, code uint32) error {
+	return transmitVerbGeneric(node, nil, verbAck, code)
 }
 
-func transmitVerbPingUDP(node *Node, code uint32) error {
+func transmitVerbPing(node *Node, code uint32) error {
 	key := node.Address() + ":" + strconv.FormatInt(int64(code), 10)
 	pack := pendingAck{
 		node:      node,
@@ -776,7 +784,7 @@ func transmitVerbPingUDP(node *Node, code uint32) error {
 	pendingAcks.m[key] = &pack
 	pendingAcks.Unlock()
 
-	return transmitVerbGenericUDP(node, nil, verbPing, code)
+	return transmitVerbGeneric(node, nil, verbPing, code)
 }
 
 func updateStatusesFromMessage(msg message) {

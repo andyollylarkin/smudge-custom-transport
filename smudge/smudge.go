@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/andyollylarkin/smudge-custom-transport"
+	updtransport "github.com/andyollylarkin/smudge-custom-transport/transport/upd_transport"
 )
 
 func main() {
@@ -57,6 +58,7 @@ func main() {
 		ip = net.ParseIP(listenIp)
 	}
 
+	smudge.SetTransport(&updtransport.UDPTransport{})
 	smudge.SetLogThreshold(smudge.LogInfo)
 	smudge.SetListenPort(listenPort)
 	smudge.SetHeartbeatMillis(heartbeatMillis)
