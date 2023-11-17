@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/andyollylarkin/smudge-custom-transport/transport"
+	udptransport "github.com/andyollylarkin/smudge-custom-transport/transport/upd_transport"
 )
 
 // A scalar value used to calculate a variety of limits
@@ -72,7 +73,9 @@ func SetTransport(trns transport.Transport) {
 
 func setDefaultTransport() {
 	if transportImpl == nil {
-		// TODO: set default transport as UDP transport
+		logInfo("No transport set. Set UDP transport as default")
+
+		transportImpl = &udptransport.UDPTransport{}
 	}
 }
 
