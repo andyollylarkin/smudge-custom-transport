@@ -18,6 +18,7 @@ package smudge
 
 import (
 	"errors"
+	"fmt"
 	"hash/adler32"
 	"net"
 )
@@ -244,7 +245,8 @@ func decodeMessage(sourceIP net.IP, bytes []byte) (message, error) {
 	checksumCalculated := adler32.Checksum(bytes[4:])
 	if checksumCalculated != checksumStated {
 		return newMessage(255, nil, 0),
-			errors.New("checksum failure from " + sourceIP.String())
+			fmt.Errorf("checksum failure from %s. calculated checksum %d, stated: %d", sourceIP.String(),
+				checksumCalculated, checksumStated)
 	}
 
 	// Byte 04

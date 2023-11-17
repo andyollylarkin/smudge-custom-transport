@@ -160,5 +160,7 @@ func (mc *MultiplexConn) ReadFrom(b []byte) (n int, addr transport.SockAddr, err
 
 	copy(b, data.data)
 
+	mc.logger.Logf(smudge.LogDebug, "Read %v from %s", data.data, data.readedFrom.GetIPAddr())
+
 	return data.readed, data.readedFrom, data.err
 }

@@ -740,6 +740,7 @@ func transmitVerbGeneric(node *Node, forwardTo *Node, verb messageVerb, code uin
 		broadcast.emitCounter--
 	}
 
+	logDebug("Write to: ", c.RemoteAddr().String())
 	_, err = c.Write(msg.encode())
 	if err != nil {
 		return err

@@ -85,7 +85,7 @@ func (uc *UDPConn) SetWriteDeadline(t time.Time) error {
 func (uc *UDPConn) ReadFrom(b []byte) (n int, addr transport.SockAddr, error error) {
 	n, udpAddr, err := uc.UnderlyingConn.ReadFromUDP(b)
 	if err != nil {
-		return 0, nil, err
+		return n, &UDPAddr{Uaddr: udpAddr}, err
 	}
 
 	a := &UDPAddr{

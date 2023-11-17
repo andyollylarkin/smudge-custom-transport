@@ -37,13 +37,6 @@ func (ut *UDPTransport) Dial(ctx context.Context, laddr transport.SockAddr,
 
 	var err error
 
-	if laddr != nil {
-		ludpAddr, err = net.ResolveUDPAddr("udp", laddr.String())
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	if raddr != nil {
 		rudpAddr, err = net.ResolveUDPAddr("udp", raddr.String())
 		if err != nil {
@@ -70,14 +63,14 @@ func (ut *UDPTransport) ResolveAddr(network string, addr string) (transport.Sock
 	}
 
 	sa := &internal.UDPAddr{
-		sockAddr,
+		Uaddr: sockAddr,
 	}
 
 	return sa, nil
 }
 
 func (ut *UDPTransport) AllowMulticast() bool {
-	return true
+	return false
 }
 
 // Return network, udp, websockets, tcp, ipv4, etc.
