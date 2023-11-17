@@ -8,6 +8,11 @@ import (
 	"github.com/andyollylarkin/smudge-custom-transport/transport"
 )
 
+// GetNodes get all connected nodes.
+func GetNodes() []*Node {
+	return AllNodes()
+}
+
 func RunGossip(ctx context.Context, trns transport.Transport, listenIp string, listenPort int,
 	initialNodeAddr string,
 ) error {

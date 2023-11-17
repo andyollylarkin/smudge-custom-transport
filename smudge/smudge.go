@@ -19,8 +19,15 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
+	"log"
+	"net"
+	"net/http"
+	"strconv"
 
 	"github.com/andyollylarkin/smudge-custom-transport"
+	"github.com/andyollylarkin/smudge-custom-transport/transport/ws_transport"
+	"github.com/gorilla/mux"
 )
 
 func main() {
@@ -42,5 +49,23 @@ func main() {
 
 	flag.Parse()
 
-	smudge.RunGossip(context.Background(), nil, listenIp, listenPort, nodeAddress)
+	t, err := wstransport.NewWsTransport()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	r := mux.NewRouter()
+
+	r.HandleFunc(wstransport.WebsocketRoutePath, func(w http.ResponseWriter, r *http.Request) {
+		fmt.Println("Connect")
+		err := t.UpgageWebsocket(w, r)
+		if err != nil {
+			log.Println(err)
+		}
+	})
+
+	go smudge.RunGossip(context.Background(), t, listenIp, listenPort, nodeAddress)
+	// smudge.RunGossip(context.Background(), nil, listenIp, listenPort, nodeAddress)
+
+	http.ListenAndServe(net.JoinHostPort(listenIp, strconv.Itoa(listenPort)), r)
 }

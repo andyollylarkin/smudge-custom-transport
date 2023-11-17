@@ -1,4 +1,4 @@
-package cluster
+package internal
 
 import (
 	"fmt"
@@ -6,27 +6,47 @@ import (
 	"sync"
 	"time"
 
+	"github.com/andyollylarkin/smudge-custom-transport/transport"
 	"github.com/gorilla/websocket"
 )
 
 // WsConnAdapter adapter (wrapper) around web socket connection for correspond net.Conn interface.
 type WsConnAdapter struct {
-	socketConn *websocket.Conn
+	SocketConn *websocket.Conn
 	mu         sync.Mutex
 }
 
 func NewWsConn(conn *websocket.Conn) *WsConnAdapter {
 	wsc := new(WsConnAdapter)
-	wsc.socketConn = conn
+	wsc.SocketConn = conn
 
 	return wsc
+}
+
+func (wsc *WsConnAdapter) ReadFrom(b []byte) (n int, addr transport.SockAddr, err error) {
+	n, err = wsc.Read(b)
+	if err != nil {
+		return
+	}
+
+	sockAddr := wsc.SocketConn.RemoteAddr()
+
+	tcpAddr, ok := sockAddr.(*net.TCPAddr)
+
+	if !ok {
+		return 0, nil, fmt.Errorf("cant resolve ws tcp addr. RemoteAddr() socket is not TCP Addr")
+	}
+
+	wsAddr := &WsAddr{WsAddrTCP: *tcpAddr}
+
+	return n, wsAddr, nil
 }
 
 // Read reads data from the connection.
 // Read can be made to time out and return an error after a fixed
 // time limit; see SetDeadline and SetReadDeadline.
 func (wsc *WsConnAdapter) Read(b []byte) (n int, err error) {
-	t, r, err := wsc.socketConn.NextReader()
+	t, r, err := wsc.SocketConn.NextReader()
 	if err != nil {
 		return 0, err
 	}
@@ -45,7 +65,7 @@ func (wsc *WsConnAdapter) Write(b []byte) (n int, err error) {
 	wsc.mu.Lock()
 	defer wsc.mu.Unlock()
 
-	err = wsc.socketConn.WriteMessage(websocket.TextMessage, b)
+	err = wsc.SocketConn.WriteMessage(websocket.TextMessage, b)
 	if err != nil {
 		return 0, err
 	}
@@ -56,21 +76,22 @@ func (wsc *WsConnAdapter) Write(b []byte) (n int, err error) {
 // Close closes the connection.
 // Any blocked Read or Write operations will be unblocked and return errors.
 func (wsc *WsConnAdapter) Close() error {
-	return wsc.socketConn.Close()
+	return nil
+	return wsc.SocketConn.Close()
 }
 
 func (wsc *WsConnAdapter) ActuallyClose() error {
-	return wsc.socketConn.Close()
+	return wsc.SocketConn.Close()
 }
 
 // LocalAddr returns the local network address, if known.
 func (wsc *WsConnAdapter) LocalAddr() net.Addr {
-	return wsc.socketConn.LocalAddr()
+	return wsc.SocketConn.LocalAddr()
 }
 
 // RemoteAddr returns the remote network address, if known.
 func (wsc *WsConnAdapter) RemoteAddr() net.Addr {
-	return wsc.socketConn.RemoteAddr()
+	return wsc.SocketConn.RemoteAddr()
 }
 
 // SetDeadline sets the read and write deadlines associated
@@ -102,7 +123,7 @@ func (wsc *WsConnAdapter) SetDeadline(t time.Time) error {
 // and any currently-blocked Read call.
 // A zero value for t means Read will not time out.
 func (wsc *WsConnAdapter) SetReadDeadline(t time.Time) error {
-	return wsc.socketConn.SetReadDeadline(t)
+	return wsc.SocketConn.SetReadDeadline(t)
 }
 
 // SetWriteDeadline sets the deadline for future Write calls
@@ -111,5 +132,5 @@ func (wsc *WsConnAdapter) SetReadDeadline(t time.Time) error {
 // some of the data was successfully written.
 // A zero value for t means Write will not time out.
 func (wsc *WsConnAdapter) SetWriteDeadline(t time.Time) error {
-	return wsc.socketConn.SetWriteDeadline(t)
+	return wsc.SocketConn.SetWriteDeadline(t)
 }

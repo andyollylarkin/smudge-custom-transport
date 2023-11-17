@@ -19,6 +19,7 @@ package smudge
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math"
 	"net"
 	"strconv"
@@ -497,6 +498,7 @@ func pingRequestCount() int {
 }
 
 func receiveMessage(addr transport.SockAddr, msgBytes []byte) error {
+	fmt.Println(msgBytes)
 	msg, err := decodeMessage(addr.GetIPAddr(), msgBytes)
 	if err != nil {
 		return err
@@ -696,7 +698,6 @@ func transmitVerbGeneric(node *Node, forwardTo *Node, verb messageVerb, code uin
 	// Transmit the ACK
 	remoteAddr, err := transportImpl.ResolveAddr(transportImpl.Network(), node.Address())
 
-	// c, err := net.DialUDP("udp", nil, remoteAddr)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
 
