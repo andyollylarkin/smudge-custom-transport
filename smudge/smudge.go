@@ -17,14 +17,10 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"flag"
-	"fmt"
-	"log"
-	"net"
-	"time"
 
 	"github.com/andyollylarkin/smudge-custom-transport"
-	updtransport "github.com/andyollylarkin/smudge-custom-transport/transport/upd_transport"
 )
 
 func main() {
@@ -32,7 +28,6 @@ func main() {
 	var heartbeatMillis int
 	var listenPort int
 	var listenIp string
-	var err error
 
 	flag.StringVar(&nodeAddress, "node", "", "Initial node")
 	flag.StringVar(&listenIp, "ip", "", "Listen addr")
@@ -47,50 +42,5 @@ func main() {
 
 	flag.Parse()
 
-	var ip net.IP
-
-	if listenIp == "" {
-		ip, err = smudge.GetLocalIP()
-		if err != nil {
-			log.Fatal("Could not get local ip:", err)
-		}
-	} else {
-		ip = net.ParseIP(listenIp)
-	}
-
-	smudge.SetTransport(&updtransport.UDPTransport{})
-	smudge.SetLogThreshold(smudge.LogInfo)
-	smudge.SetListenPort(listenPort)
-	smudge.SetHeartbeatMillis(heartbeatMillis)
-	smudge.SetListenIP(ip)
-
-	if ip.To4() == nil {
-		smudge.SetMaxBroadcastBytes(512) // 512 for IPv6
-	}
-
-	if nodeAddress != "" {
-		node, err := smudge.CreateNodeByAddress(nodeAddress)
-
-		if err == nil {
-			smudge.AddNode(node)
-		} else {
-			fmt.Println(err)
-		}
-	}
-
-	go func() {
-		for {
-
-			time.Sleep(time.Second * 5)
-			for _, n := range smudge.AllNodes() {
-				fmt.Println(n.Address(), n.Status())
-			}
-		}
-	}()
-
-	if err == nil {
-		smudge.Begin()
-	} else {
-		fmt.Println(err)
-	}
+	smudge.RunGossip(context.Background(), nil, listenIp, listenPort, nodeAddress)
 }
