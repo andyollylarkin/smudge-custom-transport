@@ -2,29 +2,19 @@
 # container, and the second retrieves the binary from the build container and
 # inserts it into a "scratch" image.
 
-# Part 1: Compile the binary in a containerized Golang environment
+# Part 1: Compile the binary in a containerized Go environment
 #
-FROM golang:1.14 as test
+FROM golang:1.20 as build
 
-COPY . /go/src/github.com/clockworksoul/smudge
-
-WORKDIR /go/src/github.com/clockworksoul/smudge
-
-RUN go test -v ./...
+COPY . /build
 
 
-# Part 2: Compile the binary in a containerized Go environment
-#
-FROM golang:1.14 as build
-
-COPY . /go/src/github.com/clockworksoul/smudge
-
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o /smudge github.com/clockworksoul/smudge/smudge
+RUN cd /build; CGO_ENABLED=0 GOOS=linux go build -o /smudge ./smudge/smudge.go
 
 
 # Part 3: Build the Smudge image proper
 #
-FROM scratch as image
+FROM alpine as image
 
 COPY --from=build /smudge .
 
