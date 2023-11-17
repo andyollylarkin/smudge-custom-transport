@@ -3,7 +3,6 @@ package wstransport
 import (
 	"context"
 	"fmt"
-	"log"
 	"net"
 	"net/http"
 	"net/url"
@@ -118,7 +117,8 @@ func (wst *WsTransport) UpgageWebsocket(w http.ResponseWriter, r *http.Request) 
 }
 
 func (wst *WsTransport) Listen(network string, addr transport.SockAddr) (transport.GenericConn, error) {
-	log.Println("NOTICE: using websocket transport. Some features not working properly (multicast, message sending.)")
+	wst.logger.Log(smudge.LogWarn,
+		"using websocket transport. Some features not working properly (multicast, message sending.)")
 
 	muxConn, connErrChan := internal.NewMuxConn(addr, wst.logger)
 

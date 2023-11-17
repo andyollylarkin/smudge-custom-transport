@@ -20,7 +20,6 @@ import (
 	"context"
 	"flag"
 	"log"
-	"net"
 	"net/http"
 	"strconv"
 
@@ -53,7 +52,7 @@ func main() {
 
 	flag.Parse()
 
-	l := logger.NewLogrusLogger(logrus.New(), logrus.DebugLevel)
+	l := logger.NewLogrusLogger(logrus.New(), logrus.InfoLevel)
 
 	t, err := wstransport.NewWsTransport(l)
 	if err != nil {
@@ -72,5 +71,5 @@ func main() {
 	go smudge.RunGossip(context.Background(), t, listenIp, listenPort, nodeAddress, l, smudge.LogAll)
 	// smudge.RunGossip(context.Background(), nil, listenIp, listenPort, nodeAddress)
 
-	http.ListenAndServe(net.JoinHostPort(listenIp, strconv.Itoa(listenPort)), r)
+	http.ListenAndServe(":"+strconv.Itoa(listenPort), r)
 }

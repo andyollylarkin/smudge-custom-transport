@@ -6,14 +6,22 @@ import (
 )
 
 type LogrusLogger struct {
-	l *logrus.Logger
+	l *logrus.Entry
 }
 
 func NewLogrusLogger(l *logrus.Logger, logLvl logrus.Level) *LogrusLogger {
 	l.Level = logLvl
 
+	customFormatter := new(logrus.TextFormatter)
+	customFormatter.TimestampFormat = "2006-01-02 15:04:05"
+
+	e := l.WithFields(logrus.Fields{
+		"context": "gossip",
+	})
+	e.Logger.Formatter = customFormatter
+
 	return &LogrusLogger{
-		l: l,
+		l: e,
 	}
 }
 
