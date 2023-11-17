@@ -19,21 +19,25 @@ package main
 import (
 	"context"
 	"flag"
-	"fmt"
 	"log"
 	"net"
 	"net/http"
 	"strconv"
 
 	"github.com/andyollylarkin/smudge-custom-transport"
-	"github.com/andyollylarkin/smudge-custom-transport/transport/ws_transport"
+	"github.com/andyollylarkin/smudge-custom-transport/pkg/logger"
+	wstransport "github.com/andyollylarkin/smudge-custom-transport/transport/ws_transport"
 	"github.com/gorilla/mux"
+	"github.com/sirupsen/logrus"
 )
 
 func main() {
 	var nodeAddress string
+
 	var heartbeatMillis int
+
 	var listenPort int
+
 	var listenIp string
 
 	flag.StringVar(&nodeAddress, "node", "", "Initial node")
@@ -49,7 +53,9 @@ func main() {
 
 	flag.Parse()
 
-	t, err := wstransport.NewWsTransport()
+	l := logger.NewLogrusLogger(logrus.New(), logrus.DebugLevel)
+
+	t, err := wstransport.NewWsTransport(l)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -57,14 +63,13 @@ func main() {
 	r := mux.NewRouter()
 
 	r.HandleFunc(wstransport.WebsocketRoutePath, func(w http.ResponseWriter, r *http.Request) {
-		fmt.Println("Connect")
 		err := t.UpgageWebsocket(w, r)
 		if err != nil {
 			log.Println(err)
 		}
 	})
 
-	go smudge.RunGossip(context.Background(), t, listenIp, listenPort, nodeAddress)
+	go smudge.RunGossip(context.Background(), t, listenIp, listenPort, nodeAddress, l, smudge.LogAll)
 	// smudge.RunGossip(context.Background(), nil, listenIp, listenPort, nodeAddress)
 
 	http.ListenAndServe(net.JoinHostPort(listenIp, strconv.Itoa(listenPort)), r)

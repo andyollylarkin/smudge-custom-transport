@@ -19,7 +19,6 @@ package smudge
 import (
 	"context"
 	"errors"
-	"fmt"
 	"math"
 	"net"
 	"strconv"
@@ -194,7 +193,7 @@ func Begin() {
 func PingNode(node *Node) error {
 	err := transmitVerbPing(node, currentHeartbeat)
 	if err != nil {
-		logInfo("Failure to ping", node, "->", err)
+		logInfo("Failure to ping", node.Address(), "->", err)
 	}
 
 	return err
@@ -498,7 +497,6 @@ func pingRequestCount() int {
 }
 
 func receiveMessage(addr transport.SockAddr, msgBytes []byte) error {
-	fmt.Println(msgBytes)
 	msg, err := decodeMessage(addr.GetIPAddr(), msgBytes)
 	if err != nil {
 		return err

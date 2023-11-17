@@ -1,11 +1,11 @@
 package internal
 
 import (
-	"fmt"
 	"net"
 	"sync"
 	"time"
 
+	"github.com/andyollylarkin/smudge-custom-transport"
 	"github.com/andyollylarkin/smudge-custom-transport/transport"
 )
 
@@ -17,25 +17,30 @@ type readData struct {
 }
 
 type MultiplexConn struct {
-	laddr       transport.SockAddr
-	wg          sync.WaitGroup
-	dataChan    chan readData
-	onCloseChan chan struct{}
-	connChan    chan transport.GenericConn
+	laddr         transport.SockAddr
+	wg            sync.WaitGroup
+	dataChan      chan readData
+	onCloseChan   chan struct{}
+	connChan      chan transport.GenericConn
+	connErrorChan chan net.Addr
+	logger        smudge.Logger
 }
 
-func NewMuxConn(laddr transport.SockAddr) *MultiplexConn {
+func NewMuxConn(laddr transport.SockAddr, logger smudge.Logger) (*MultiplexConn, chan net.Addr) {
+	connErrChan := make(chan net.Addr)
 	c := &MultiplexConn{
-		laddr:       laddr,
-		wg:          sync.WaitGroup{},
-		dataChan:    make(chan readData),
-		onCloseChan: make(chan struct{}),
-		connChan:    make(chan transport.GenericConn),
+		laddr:         laddr,
+		wg:            sync.WaitGroup{},
+		dataChan:      make(chan readData),
+		onCloseChan:   make(chan struct{}),
+		connChan:      make(chan transport.GenericConn),
+		connErrorChan: connErrChan,
+		logger:        logger,
 	}
 
 	go c.handleLoop()
 
-	return c
+	return c, connErrChan
 }
 
 func (mc *MultiplexConn) HandleNewConn(conn transport.GenericConn) {
@@ -58,20 +63,10 @@ func (mc *MultiplexConn) handleRead(conn transport.GenericConn) {
 
 	for {
 		n, err := conn.Read(buf)
-
-		if len(buf) == 0 {
-			fmt.Println("EMPTY")
-
-			continue
-		}
-
 		if err != nil {
-			mc.dataChan <- readData{
-				readed:     0,
-				readedFrom: nil,
-				err:        err,
-				data:       buf,
-			}
+			mc.connErrorChan <- conn.RemoteAddr()
+
+			return
 		}
 
 		tcpaddr, err := net.ResolveTCPAddr("tcp", conn.RemoteAddr().String())

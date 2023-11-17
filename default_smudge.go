@@ -14,7 +14,7 @@ func GetNodes() []*Node {
 }
 
 func RunGossip(ctx context.Context, trns transport.Transport, listenIp string, listenPort int,
-	initialNodeAddr string,
+	initialNodeAddr string, logger Logger, logLvl LogLevel,
 ) error {
 	var ip net.IP
 
@@ -30,7 +30,14 @@ func RunGossip(ctx context.Context, trns transport.Transport, listenIp string, l
 	}
 
 	SetTransport(trns)
-	SetLogThreshold(LogInfo)
+
+	if logger != nil {
+		SetLogger(logger)
+	} else {
+		SetLogThreshold(LogAll)
+	}
+
+	SetLogThreshold(logLvl)
 	SetListenPort(listenPort)
 	SetHeartbeatMillis(heartbeatMillis)
 	SetListenIP(ip)

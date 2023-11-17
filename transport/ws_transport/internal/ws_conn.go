@@ -75,11 +75,12 @@ func (wsc *WsConnAdapter) Write(b []byte) (n int, err error) {
 
 // Close closes the connection.
 // Any blocked Read or Write operations will be unblocked and return errors.
+// **NOTICE** this function do nothing, because we don't want the connection to be closed after every data transfer.
 func (wsc *WsConnAdapter) Close() error {
 	return nil
-	return wsc.SocketConn.Close()
 }
 
+// ActuallyClose actyally close websocket connection.
 func (wsc *WsConnAdapter) ActuallyClose() error {
 	return wsc.SocketConn.Close()
 }

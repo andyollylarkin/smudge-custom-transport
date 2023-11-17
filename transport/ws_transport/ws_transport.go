@@ -3,11 +3,13 @@ package wstransport
 import (
 	"context"
 	"fmt"
+	"log"
 	"net"
 	"net/http"
 	"net/url"
 	"sync"
 
+	"github.com/andyollylarkin/smudge-custom-transport"
 	"github.com/andyollylarkin/smudge-custom-transport/transport"
 	"github.com/andyollylarkin/smudge-custom-transport/transport/ws_transport/internal"
 	"github.com/gorilla/websocket"
@@ -26,6 +28,7 @@ type WsTransport struct {
 	cache    *lru.Cache
 	wg       sync.WaitGroup
 	connChan chan transport.GenericConn
+	logger   smudge.Logger
 }
 
 // connCacheSet store connection in LRU cache.
@@ -36,6 +39,16 @@ func (wst *WsTransport) connCacheSet(addr net.Addr, conn *internal.WsConnAdapter
 	}
 
 	return wst.cache.Add(h, conn), nil
+}
+
+// connCacheRemove remove connection from LRU cache.
+func (wst *WsTransport) connCacheRemove(addr net.Addr) bool {
+	h, _, err := net.SplitHostPort(addr.String())
+	if err != nil {
+		return false
+	}
+
+	return wst.cache.Remove(h)
 }
 
 // connCacheGet get connection from LRU cache.
@@ -52,13 +65,13 @@ func (wst *WsTransport) connCacheGet(addr net.Addr) (*internal.WsConnAdapter, bo
 
 	wsConn, ok := conn.(*internal.WsConnAdapter)
 	if !ok {
-		return nil, false, fmt.Errorf("cat get conn for addr %s from cache. Conn type isn't WsConnAdapter", addr.String())
+		return nil, false, fmt.Errorf("cant get conn for addr %s from cache. Conn type isn't WsConnAdapter", addr.String())
 	}
 
 	return wsConn, true, nil
 }
 
-func NewWsTransport() (*WsTransport, error) {
+func NewWsTransport(logger smudge.Logger) (*WsTransport, error) {
 	cache, err := lru.New(MaxLRUCacheItems)
 	if err != nil {
 		return nil, fmt.Errorf("cant create connections cache: %w", err)
@@ -66,6 +79,7 @@ func NewWsTransport() (*WsTransport, error) {
 
 	t := new(WsTransport)
 
+	t.logger = logger
 	t.connChan = make(chan transport.GenericConn)
 
 	t.cache = cache
@@ -104,7 +118,9 @@ func (wst *WsTransport) UpgageWebsocket(w http.ResponseWriter, r *http.Request) 
 }
 
 func (wst *WsTransport) Listen(network string, addr transport.SockAddr) (transport.GenericConn, error) {
-	muxConn := internal.NewMuxConn(addr)
+	log.Println("NOTICE: using websocket transport. Some features not working properly (multicast, message sending.)")
+
+	muxConn, connErrChan := internal.NewMuxConn(addr, wst.logger)
 
 	go func() {
 		for c := range wst.connChan {
@@ -112,9 +128,26 @@ func (wst *WsTransport) Listen(network string, addr transport.SockAddr) (transpo
 		}
 	}()
 
+	go wst.connCloseMonitor(connErrChan)
+
 	// TODO: listen on close and then close all opened connections
 
 	return muxConn, nil
+}
+
+func (wst *WsTransport) connCloseMonitor(connErrChan chan net.Addr) {
+	for addr := range connErrChan {
+		conn, ok, err := wst.connCacheGet(addr)
+		if err != nil || !ok {
+			continue
+		}
+
+		conn.ActuallyClose()
+
+		wst.connCacheRemove(addr)
+
+		wst.logger.Logf(smudge.LogDebug, "Actually close %s", conn.RemoteAddr().String())
+	}
 }
 
 func (wst *WsTransport) Dial(ctx context.Context, laddr transport.SockAddr,
@@ -166,7 +199,7 @@ func (wst *WsTransport) ResolveAddr(network string, addr string) (transport.Sock
 	}
 
 	wsa := &internal.WsAddr{
-		*tcpAddr,
+		WsAddrTCP: *tcpAddr,
 	}
 
 	return wsa, nil
