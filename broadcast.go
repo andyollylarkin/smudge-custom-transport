@@ -252,7 +252,7 @@ func getBroadcastToEmit() *Broadcast {
 	broadcasts.Lock()
 	for _, b := range values {
 		if b.emitCounter <= broadcastRemoveValue {
-			logDebug("Removing", b.Label(), "from recently updated list")
+			logDebug("Removing ", b.Label(), " from recently updated list")
 			delete(broadcasts.m, b.Label())
 		} else {
 			broadcastSlice = append(broadcastSlice, b)
