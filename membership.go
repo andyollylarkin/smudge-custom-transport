@@ -182,7 +182,7 @@ func Begin() {
 		}
 
 		if pingCounter == 0 {
-			logDebug("No nodes to ping. So lonely. :(")
+			logTrace("No nodes to ping. So lonely. :(")
 			time.Sleep(time.Millisecond * time.Duration(GetHeartbeatMillis()))
 		}
 	}
@@ -369,7 +369,7 @@ func listen(port int) error {
 	defer c.Close()
 
 	for {
-		buf := make([]byte, 2048) // big enough to fit 1280 IPv6 UDP message
+		buf := make([]byte, ReadBufSize) // big enough to fit 1280 IPv6 UDP message
 		n, addr, err := c.ReadFrom(buf)
 		if err != nil {
 			logError("read error: ", err)
@@ -740,7 +740,7 @@ func transmitVerbGeneric(node *Node, forwardTo *Node, verb messageVerb, code uin
 		broadcast.emitCounter--
 	}
 
-	logDebug("Write to: ", c.RemoteAddr().String())
+	logTrace("Write to: ", c.RemoteAddr().String())
 	_, err = c.Write(msg.encode())
 	if err != nil {
 		return err

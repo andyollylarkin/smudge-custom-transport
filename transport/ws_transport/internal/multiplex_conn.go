@@ -59,7 +59,7 @@ func (mc *MultiplexConn) handleLoop() {
 }
 
 func (mc *MultiplexConn) handleRead(conn transport.GenericConn) {
-	buf := make([]byte, 11)
+	buf := make([]byte, smudge.ReadBufSize)
 
 	for {
 		n, err := conn.Read(buf)
@@ -77,8 +77,6 @@ func (mc *MultiplexConn) handleRead(conn transport.GenericConn) {
 			err:        err,
 			data:       buf,
 		}
-
-		buf = make([]byte, 11)
 	}
 }
 
@@ -159,8 +157,6 @@ func (mc *MultiplexConn) ReadFrom(b []byte) (n int, addr transport.SockAddr, err
 	data := <-mc.dataChan
 
 	copy(b, data.data)
-
-	mc.logger.Logf(smudge.LogDebug, "Read %v from %s", data.data, data.readedFrom.GetIPAddr())
 
 	return data.readed, data.readedFrom, data.err
 }
