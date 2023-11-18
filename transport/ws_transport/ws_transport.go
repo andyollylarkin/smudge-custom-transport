@@ -59,6 +59,8 @@ func (wst *WsTransport) connCacheGet(addr net.Addr) (*internal.WsConnAdapter, bo
 
 	conn, ok := wst.cache.Get(h)
 	if !ok {
+		wst.logger.Logf(smudge.LogDebug, "connection get cache miss for %s", addr.String())
+
 		return nil, false, nil
 	}
 
