@@ -3,8 +3,8 @@ version: '2'
 services:
   nodemain:
     build: .
-    entrypoint: 
-    command: "/smudge -ip 10.5.0.2 -port 9999"
+    image: smudge-debug
+    command: "/smudge -port 9999"
     ports:
       - 9990:9999
     networks:
@@ -12,8 +12,10 @@ services:
         ipv4_address: 10.5.0.2
 
   node001:
-    build: .
-    command: "/smudge -node 10.5.0.2 -port 9999 -ip 10.5.0.3"
+    image: smudge-debug
+    command: "/smudge -node 10.5.0.2 -port 9999"
+    depends_on:
+      - nodemain
     ports:
       - 9991:9999
     networks:
@@ -21,8 +23,10 @@ services:
         ipv4_address: 10.5.0.3
 
   node002:
-    build: .
-    command: "/smudge -node 10.5.0.2 -port 9999 -ip 10.5.0.4"
+    image: smudge-debug
+    command: "/smudge -node 10.5.0.2 -port 9999"
+    depends_on:
+      - nodemain
     ports:
       - 9992:9999
     networks:
