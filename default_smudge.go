@@ -13,6 +13,10 @@ func GetNodes() []*Node {
 	return AllNodes()
 }
 
+func ThisHost() *Node {
+	return thisHost
+}
+
 func RunGossip(ctx context.Context, trns transport.Transport, listenIp string, listenPort int,
 	initialNodeAddr string, logger Logger, logLvl LogLevel,
 ) error {
