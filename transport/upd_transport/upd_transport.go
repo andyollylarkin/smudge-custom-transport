@@ -70,7 +70,7 @@ func (ut *UDPTransport) ResolveAddr(network string, addr string) (transport.Sock
 }
 
 func (ut *UDPTransport) AllowMulticast() bool {
-	return false
+	return true
 }
 
 // Return network, udp, websockets, tcp, ipv4, etc.
