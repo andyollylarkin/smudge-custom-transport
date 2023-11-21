@@ -51,9 +51,6 @@ func init() {
 // nodes. Updates the node timestamp but DOES NOT implicitly update the node's
 // status; you need to do this explicitly.
 func AddNode(node *Node) (*Node, error) {
-	if knownNodes.containsByIP(node) {
-		return node, nil
-	}
 	if !knownNodes.contains(node) {
 		if node.status == StatusUnknown {
 			logWarn(node.Address(),
