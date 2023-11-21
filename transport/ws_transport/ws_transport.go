@@ -28,7 +28,7 @@ var (
 type WsTransport struct {
 	cache              *lru.Cache
 	wg                 sync.WaitGroup
-	remoteWsServerPort int
+	remoteWsServerPort *int
 	connChan           chan transport.GenericConn
 	logger             smudge.Logger
 }
@@ -75,7 +75,7 @@ func (wst *WsTransport) connCacheGet(addr net.Addr) (*internal.WsConnAdapter, bo
 	return wsConn, true, nil
 }
 
-func NewWsTransport(logger smudge.Logger, remoteWsServerPort int) (*WsTransport, error) {
+func NewWsTransport(logger smudge.Logger, remoteWsServerPort *int) (*WsTransport, error) {
 	cache, err := lru.New(MaxLRUCacheItems)
 	if err != nil {
 		return nil, fmt.Errorf("cant create connections cache: %w", err)
@@ -173,12 +173,18 @@ func (wst *WsTransport) Dial(ctx context.Context, laddr transport.SockAddr,
 		return nil, fmt.Errorf("invalid addr format for raddr. should be host:port, or host. Given nil")
 	}
 
-	ip, port, err := utils.ParseURIToHostPort(raddr.String())
-	if err != nil {
-		return nil, err
-	}
+	var remoteAddr string
 
-	remoteAddr := net.JoinHostPort(ip, strconv.Itoa(port))
+	if wst.remoteWsServerPort != nil {
+		ip, port, err := utils.ParseURIToHostPort(raddr.String())
+		if err != nil {
+			return nil, err
+		}
+
+		remoteAddr = net.JoinHostPort(ip, strconv.Itoa(port))
+	} else {
+		remoteAddr = raddr.String()
+	}
 
 	url := url.URL{
 		Scheme: "ws",
