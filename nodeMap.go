@@ -55,6 +55,17 @@ func (m *nodeMap) delete(node *Node) (string, *Node, error) {
 	return node.Address(), node, nil
 }
 
+func (m *nodeMap) containsByIP(node *Node) bool {
+	for _, v := range m.nodes {
+		if node.IP().String() == v.IP().String() {
+			logDebug("Node with ip, already in nodeMap: ", node.IP().String())
+			return true
+		}
+	}
+
+	return false
+}
+
 func (m *nodeMap) contains(node *Node) bool {
 	return m.containsByAddress(node.Address())
 }
