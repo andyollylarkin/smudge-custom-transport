@@ -19,7 +19,6 @@ package smudge
 import (
 	"context"
 	"errors"
-	"fmt"
 	"math"
 	"net"
 	"strconv"
@@ -700,7 +699,6 @@ func transmitVerbGeneric(node *Node, forwardTo *Node, verb messageVerb, code uin
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
 
-	fmt.Println("DIAL REMOTE ADDRESS: ", remoteAddr.String())
 	c, err := transportImpl.Dial(ctx, nil, remoteAddr)
 	if err != nil {
 		return err

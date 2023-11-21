@@ -21,6 +21,7 @@ import (
 	"net"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
 )
 
@@ -231,6 +232,9 @@ func parseNodeAddress(hostAndMaybePort string) (net.IP, uint16, error) {
 	port = uint16(GetListenPort())
 
 	host, sport, err := net.SplitHostPort(hostAndMaybePort)
+	if err != nil && strings.Contains(err.Error(), "missing port in address") {
+		return nil, 0, err
+	}
 
 	if err == nil {
 		if sport != "" {
