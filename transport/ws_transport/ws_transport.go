@@ -105,26 +105,14 @@ func (wst *WsTransport) UpgageWebsocket(w http.ResponseWriter, r *http.Request) 
 		return err
 	}
 
-	var addr net.Addr
-
-	realIp, ok := r.Header["X-Real-IP"]
-	// if X-Real-IP header is set, we behind nginx. Set connection remote address to X-Real-IP
 	if ok {
-		wst.logger.Logf(smudge.LogDebug, "Real client IP: %s", realIp[0])
-		_, port, err := net.SplitHostPort(wsconn.RemoteAddr().String())
-		if err != nil {
-			return fmt.Errorf("cant assign real remote addr: %w", err)
-		}
-
-		addr, err = net.ResolveTCPAddr("tcp", net.JoinHostPort(realIp[0], port))
-		if err != nil {
-			return fmt.Errorf("cant assign real remote addr: %w", err)
-		}
-	} else {
-		addr = wsconn.RemoteAddr()
+		return nil
 	}
 
-	adapter := internal.NewWsConn(wsconn, addr)
+	adapter, err := internal.NewWsConnAdapter(r, wsconn)
+	if err != nil {
+		return err
+	}
 
 	_, err = wst.connCacheSet(adapter.RemoteAddr(), adapter)
 	if err != nil {
@@ -219,8 +207,9 @@ func (wst *WsTransport) Dial(ctx context.Context, laddr transport.SockAddr,
 		return nil, err
 	}
 
-	adapter := &internal.WsConnAdapter{
-		SocketConn: wsconn,
+	adapter, err := internal.NewWsConnAdapter(nil, wsconn)
+	if err != nil {
+		return nil, err
 	}
 
 	_, err = wst.connCacheSet(adapter.RemoteAddr(), adapter)
