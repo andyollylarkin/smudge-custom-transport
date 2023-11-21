@@ -125,7 +125,7 @@ func Begin() {
 	// again.
 
 	for {
-		var randomAllNodes = knownNodes.getRandomNodes(0, thisHost)
+		var randomAllNodes = knownNodes.getRandomNodes(0, excludeNodes(thisHost)...)
 		var pingCounter int
 
 		for _, node := range randomAllNodes {
@@ -221,8 +221,23 @@ func decodeMulticastAnnounceBytes(bytes []byte) (string, []byte, error) {
 	return name, msgBytes, nil
 }
 
+func excludeNodes(exclude ...*Node) []*Node {
+	excludeNodes := make([]*Node, 0)
+	excludeNodes = append(excludeNodes, exclude...)
+	all := AllNodes()
+
+	// exclude nodes with same ip
+	for _, n := range all {
+		if n.IP().String() == thisHost.IP().String() {
+			excludeNodes = append(excludeNodes, n)
+		}
+	}
+
+	return excludeNodes
+}
+
 func doForwardOnTimeout(pack *pendingAck) {
-	filteredNodes := getTargetNodes(pingRequestCount(), thisHost, pack.node)
+	filteredNodes := getTargetNodes(pingRequestCount(), excludeNodes(thisHost, pack.node)...)
 
 	if len(filteredNodes) == 0 {
 		logDebug(thisHost.Address(), "Cannot forward ping request: no more nodes")
@@ -712,11 +727,11 @@ func transmitVerbGeneric(node *Node, forwardTo *Node, verb messageVerb, code uin
 	}
 
 	// Add members for update.
-	nodes := getRandomUpdatedNodes(pingRequestCount(), node, thisHost)
+	nodes := getRandomUpdatedNodes(pingRequestCount(), excludeNodes(node, thisHost)...)
 
 	// No updates to distribute? Send out a few updates on other known nodes.
 	if len(nodes) == 0 {
-		nodes = knownNodes.getRandomNodes(pingRequestCount(), node, thisHost)
+		nodes = knownNodes.getRandomNodes(pingRequestCount(), excludeNodes(node, thisHost)...)
 	}
 
 	for _, n := range nodes {
