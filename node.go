@@ -56,10 +56,6 @@ func (n *Node) Address() string {
 	return n.address
 }
 
-func (n *Node) AddressNoPort() string {
-	return n.ip.String()
-}
-
 // Age returns the time since we last heard from this node, in milliseconds.
 func (n *Node) Age() uint32 {
 	return GetNowInMillis() - n.timestamp
