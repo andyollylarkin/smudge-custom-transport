@@ -6,11 +6,9 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"strconv"
 	"sync"
 
 	"github.com/andyollylarkin/smudge-custom-transport"
-	"github.com/andyollylarkin/smudge-custom-transport/pkg/utils"
 	"github.com/andyollylarkin/smudge-custom-transport/transport"
 	"github.com/andyollylarkin/smudge-custom-transport/transport/ws_transport/internal"
 	"github.com/gorilla/websocket"
@@ -178,12 +176,12 @@ func (wst *WsTransport) Dial(ctx context.Context, laddr transport.SockAddr,
 	var remoteAddr string
 
 	if wst.remoteWsServerPort != nil {
-		ip, port, err := utils.ParseURIToHostPort(raddr.String())
+		ip, port, err := net.SplitHostPort(raddr.String())
 		if err != nil {
 			return nil, err
 		}
 
-		remoteAddr = net.JoinHostPort(ip, strconv.Itoa(port))
+		remoteAddr = net.JoinHostPort(ip, port)
 	} else {
 		remoteAddr = raddr.String()
 	}
