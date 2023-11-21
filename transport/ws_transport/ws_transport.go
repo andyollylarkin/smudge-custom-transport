@@ -29,7 +29,7 @@ type WsTransport struct {
 	wg                 sync.WaitGroup
 	remoteWsServerPort *int
 	wsBasePath         string
-	connChan           chan transport.GenericConn
+	connChan           chan *internal.WsConnAdapter
 	logger             smudge.Logger
 }
 
@@ -86,7 +86,7 @@ func NewWsTransport(logger smudge.Logger, remoteWsServerPort *int, wsBasePath st
 	t.logger = logger
 	t.remoteWsServerPort = remoteWsServerPort
 	t.wsBasePath = wsBasePath
-	t.connChan = make(chan transport.GenericConn)
+	t.connChan = make(chan *internal.WsConnAdapter)
 
 	t.cache = cache
 
@@ -105,15 +105,28 @@ func (wst *WsTransport) UpgageWebsocket(w http.ResponseWriter, r *http.Request) 
 		return err
 	}
 
+	var addr net.Addr
+
+	realIp, ok := r.Header["X-Real-IP"]
+	// if X-Real-IP header is set, we behind nginx. Set connection remote address to X-Real-IP
 	if ok {
-		return nil
+		wst.logger.Logf(smudge.LogDebug, "Real client IP: %s", realIp[0])
+		_, port, err := net.SplitHostPort(wsconn.RemoteAddr().String())
+		if err != nil {
+			return fmt.Errorf("cant assign real remote addr: %w", err)
+		}
+
+		addr, err = net.ResolveTCPAddr("tcp", net.JoinHostPort(realIp[0], port))
+		if err != nil {
+			return fmt.Errorf("cant assign real remote addr: %w", err)
+		}
+	} else {
+		addr = wsconn.RemoteAddr()
 	}
 
-	adapter := &internal.WsConnAdapter{
-		SocketConn: wsconn,
-	}
+	adapter := internal.NewWsConn(wsconn, addr)
 
-	_, err = wst.connCacheSet(wsconn.RemoteAddr(), adapter)
+	_, err = wst.connCacheSet(adapter.RemoteAddr(), adapter)
 	if err != nil {
 		return err
 	}

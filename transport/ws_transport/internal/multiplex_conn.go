@@ -21,7 +21,7 @@ type MultiplexConn struct {
 	wg            sync.WaitGroup
 	dataChan      chan readData
 	onCloseChan   chan struct{}
-	connChan      chan transport.GenericConn
+	connChan      chan *WsConnAdapter
 	connErrorChan chan net.Addr
 	logger        smudge.Logger
 }
@@ -33,7 +33,7 @@ func NewMuxConn(laddr transport.SockAddr, logger smudge.Logger) (*MultiplexConn,
 		wg:            sync.WaitGroup{},
 		dataChan:      make(chan readData),
 		onCloseChan:   make(chan struct{}),
-		connChan:      make(chan transport.GenericConn),
+		connChan:      make(chan *WsConnAdapter),
 		connErrorChan: connErrChan,
 		logger:        logger,
 	}
@@ -43,7 +43,7 @@ func NewMuxConn(laddr transport.SockAddr, logger smudge.Logger) (*MultiplexConn,
 	return c, connErrChan
 }
 
-func (mc *MultiplexConn) HandleNewConn(conn transport.GenericConn) {
+func (mc *MultiplexConn) HandleNewConn(conn *WsConnAdapter) {
 	mc.connChan <- conn
 }
 
@@ -58,7 +58,7 @@ func (mc *MultiplexConn) handleLoop() {
 	}
 }
 
-func (mc *MultiplexConn) handleRead(conn transport.GenericConn) {
+func (mc *MultiplexConn) handleRead(conn *WsConnAdapter) {
 	buf := make([]byte, smudge.ReadBufSize)
 
 	for {

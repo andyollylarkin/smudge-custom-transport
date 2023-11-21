@@ -12,13 +12,15 @@ import (
 
 // WsConnAdapter adapter (wrapper) around web socket connection for correspond net.Conn interface.
 type WsConnAdapter struct {
-	SocketConn *websocket.Conn
-	mu         sync.Mutex
+	SocketConn     *websocket.Conn
+	realRemoteAddr net.Addr
+	mu             sync.Mutex
 }
 
-func NewWsConn(conn *websocket.Conn) *WsConnAdapter {
+func NewWsConn(conn *websocket.Conn, realRemoteAddr net.Addr) *WsConnAdapter {
 	wsc := new(WsConnAdapter)
 	wsc.SocketConn = conn
+	wsc.realRemoteAddr = realRemoteAddr
 
 	return wsc
 }
@@ -92,7 +94,7 @@ func (wsc *WsConnAdapter) LocalAddr() net.Addr {
 
 // RemoteAddr returns the remote network address, if known.
 func (wsc *WsConnAdapter) RemoteAddr() net.Addr {
-	return wsc.SocketConn.RemoteAddr()
+	return wsc.realRemoteAddr
 }
 
 // SetDeadline sets the read and write deadlines associated
