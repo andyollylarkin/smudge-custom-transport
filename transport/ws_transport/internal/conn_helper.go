@@ -19,15 +19,15 @@ func NewWsConnAdapter(r *http.Request, wsconn *websocket.Conn) (*WsConnAdapter, 
 }
 
 func createConnWithRequest(r *http.Request, wsconn *websocket.Conn) (*WsConnAdapter, error) {
-	realIp, ok := r.Header["X-Real-IP"]
+	realIp := r.Header.Get("X-Real-IP")
 	// if X-Real-IP header is set, we behind nginx. Set connection remote address to X-Real-IP
-	if ok {
+	if realIp != "" {
 		_, port, err := net.SplitHostPort(wsconn.RemoteAddr().String())
 		if err != nil {
 			return nil, fmt.Errorf("cant assign real remote addr: %w", err)
 		}
 
-		addr, err := net.ResolveTCPAddr("tcp", net.JoinHostPort(realIp[0], port))
+		addr, err := net.ResolveTCPAddr("tcp", net.JoinHostPort(realIp, port))
 		if err != nil {
 			return nil, fmt.Errorf("cant assign real remote addr: %w", err)
 		}
