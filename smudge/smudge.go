@@ -55,7 +55,7 @@ func main() {
 
 	l := logger.NewLogrusLogger(logrus.New(), logrus.DebugLevel)
 
-	t, err := wstransport.NewWsTransport(l)
+	t, err := wstransport.NewWsTransport(l, listenPort)
 	if err != nil {
 		log.Fatal(err)
 	}

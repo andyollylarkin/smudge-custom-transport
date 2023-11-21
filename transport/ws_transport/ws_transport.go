@@ -6,9 +6,11 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"strconv"
 	"sync"
 
 	"github.com/andyollylarkin/smudge-custom-transport"
+	"github.com/andyollylarkin/smudge-custom-transport/pkg/utils"
 	"github.com/andyollylarkin/smudge-custom-transport/transport"
 	"github.com/andyollylarkin/smudge-custom-transport/transport/ws_transport/internal"
 	"github.com/gorilla/websocket"
@@ -24,10 +26,11 @@ var (
 )
 
 type WsTransport struct {
-	cache    *lru.Cache
-	wg       sync.WaitGroup
-	connChan chan transport.GenericConn
-	logger   smudge.Logger
+	cache              *lru.Cache
+	wg                 sync.WaitGroup
+	remoteWsServerPort int
+	connChan           chan transport.GenericConn
+	logger             smudge.Logger
 }
 
 // connCacheSet store connection in LRU cache.
@@ -72,7 +75,7 @@ func (wst *WsTransport) connCacheGet(addr net.Addr) (*internal.WsConnAdapter, bo
 	return wsConn, true, nil
 }
 
-func NewWsTransport(logger smudge.Logger) (*WsTransport, error) {
+func NewWsTransport(logger smudge.Logger, remoteWsServerPort int) (*WsTransport, error) {
 	cache, err := lru.New(MaxLRUCacheItems)
 	if err != nil {
 		return nil, fmt.Errorf("cant create connections cache: %w", err)
@@ -81,6 +84,7 @@ func NewWsTransport(logger smudge.Logger) (*WsTransport, error) {
 	t := new(WsTransport)
 
 	t.logger = logger
+	t.remoteWsServerPort = remoteWsServerPort
 	t.connChan = make(chan transport.GenericConn)
 
 	t.cache = cache
@@ -169,9 +173,16 @@ func (wst *WsTransport) Dial(ctx context.Context, laddr transport.SockAddr,
 		return nil, fmt.Errorf("invalid addr format for raddr. should be host:port, or host. Given nil")
 	}
 
+	ip, port, err := utils.ParseURIToHostPort(raddr.String())
+	if err != nil {
+		return nil, err
+	}
+
+	remoteAddr := net.JoinHostPort(ip, strconv.Itoa(port))
+
 	url := url.URL{
 		Scheme: "ws",
-		Host:   raddr.String(),
+		Host:   remoteAddr,
 		Path:   WebsocketRoutePath,
 	}
 
