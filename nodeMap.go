@@ -55,6 +55,25 @@ func (m *nodeMap) delete(node *Node) (string, *Node, error) {
 	return node.Address(), node, nil
 }
 
+func (m *nodeMap) containsByIp(node *Node) bool {
+	m.RLock()
+	defer m.RUnlock()
+
+	for k, _ := range m.nodes {
+		ip, _, err := net.SplitHostPort(k)
+		if err != nil {
+			logError(err)
+			continue
+		}
+
+		if ip == node.AddressNoPort() {
+			return true
+		}
+	}
+
+	return false
+}
+
 func (m *nodeMap) contains(node *Node) bool {
 	return m.containsByAddress(node.Address())
 }
