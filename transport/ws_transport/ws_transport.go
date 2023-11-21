@@ -29,6 +29,7 @@ type WsTransport struct {
 	cache              *lru.Cache
 	wg                 sync.WaitGroup
 	remoteWsServerPort *int
+	wsBasePath         string
 	connChan           chan transport.GenericConn
 	logger             smudge.Logger
 }
@@ -75,7 +76,7 @@ func (wst *WsTransport) connCacheGet(addr net.Addr) (*internal.WsConnAdapter, bo
 	return wsConn, true, nil
 }
 
-func NewWsTransport(logger smudge.Logger, remoteWsServerPort *int) (*WsTransport, error) {
+func NewWsTransport(logger smudge.Logger, remoteWsServerPort *int, wsBasePath string) (*WsTransport, error) {
 	cache, err := lru.New(MaxLRUCacheItems)
 	if err != nil {
 		return nil, fmt.Errorf("cant create connections cache: %w", err)
@@ -85,6 +86,7 @@ func NewWsTransport(logger smudge.Logger, remoteWsServerPort *int) (*WsTransport
 
 	t.logger = logger
 	t.remoteWsServerPort = remoteWsServerPort
+	t.wsBasePath = wsBasePath
 	t.connChan = make(chan transport.GenericConn)
 
 	t.cache = cache
@@ -186,10 +188,18 @@ func (wst *WsTransport) Dial(ctx context.Context, laddr transport.SockAddr,
 		remoteAddr = raddr.String()
 	}
 
+	var basePath string
+
+	if wst.wsBasePath == "" {
+		basePath = WebsocketRoutePath
+	} else {
+		basePath = wst.wsBasePath
+	}
+
 	url := url.URL{
 		Scheme: "ws",
 		Host:   remoteAddr,
-		Path:   WebsocketRoutePath,
+		Path:   basePath,
 	}
 
 	wsconn, _, err := websocket.DefaultDialer.Dial(url.String(), nil)
