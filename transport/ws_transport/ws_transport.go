@@ -26,6 +26,7 @@ var (
 type WsTransport struct {
 	cache              *internal.ConnectionStore
 	wg                 sync.WaitGroup
+	listenAddr         transport.SockAddr
 	remoteWsServerPort *int
 	wsBasePath         string
 	connChan           chan *internal.WsConnAdapter
@@ -83,6 +84,7 @@ func (wst *WsTransport) Listen(network string, addr transport.SockAddr) (transpo
 		"using websocket transport. Some features not working properly (multicast, message sending.)")
 
 	muxConn, connErrChan := internal.NewMuxConn(addr, wst.logger)
+	wst.listenAddr = addr
 
 	go func() {
 		for c := range wst.connChan {
@@ -156,7 +158,12 @@ func (wst *WsTransport) Dial(ctx context.Context, laddr transport.SockAddr,
 		Path:   basePath,
 	}
 
-	wsconn, _, err := websocket.DefaultDialer.Dial(url.String(), nil)
+	header, err := wst.getDialHeaders()
+	if err != nil {
+		return nil, err
+	}
+
+	wsconn, _, err := websocket.DefaultDialer.Dial(url.String(), header)
 	if err != nil {
 		return nil, err
 	}
@@ -174,6 +181,17 @@ func (wst *WsTransport) Dial(ctx context.Context, laddr transport.SockAddr,
 	wst.connChan <- adapter
 
 	return adapter, nil
+}
+
+func (wst *WsTransport) getDialHeaders() (http.Header, error) {
+	header := http.Header{}
+	h, _, err := net.SplitHostPort(wst.listenAddr.String())
+	if err != nil {
+		return header, err
+	}
+	header.Set("X-Forwarded-For", h)
+
+	return header, err
 }
 
 func (wst *WsTransport) ResolveAddr(network string, addr string) (transport.SockAddr, error) {
