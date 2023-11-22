@@ -192,11 +192,7 @@ func (wst *WsTransport) getDialHeaders() (http.Header, error) {
 	}
 
 	header := http.Header{}
-	h, _, err := net.SplitHostPort(wst.listenIp.String())
-	if err != nil {
-		return header, err
-	}
-	header.Set("X-Forwarded-For", h)
+	header.Set("X-Forwarded-For", wst.listenIp.String())
 
 	return header, err
 }
