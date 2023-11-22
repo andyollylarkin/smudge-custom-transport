@@ -64,6 +64,8 @@ func (wst *WsTransport) UpgageWebsocket(w http.ResponseWriter, r *http.Request) 
 		return nil
 	}
 
+	wst.logger.Logf(smudge.LogInfo, "New connect from %s", wsconn.RemoteAddr())
+
 	adapter, err := internal.NewWsConnAdapter(r, wsconn)
 	if err != nil {
 		return err
