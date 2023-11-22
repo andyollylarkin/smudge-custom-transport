@@ -29,7 +29,7 @@ func createConnWithRequest(r *http.Request, wsconn *websocket.Conn) (*WsConnAdap
 			return nil, fmt.Errorf("cant assign real remote addr: %w", err)
 		}
 
-		addr, err := net.ResolveTCPAddr("tcp", net.JoinHostPort(realIpArr, port))
+		addr, err := net.ResolveTCPAddr("tcp", net.JoinHostPort(realIps[0], port))
 		if err != nil {
 			return nil, fmt.Errorf("cant assign real remote addr: %w", err)
 		}
