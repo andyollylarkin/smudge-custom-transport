@@ -13,7 +13,6 @@ import (
 	"github.com/andyollylarkin/smudge-custom-transport/transport"
 	"github.com/andyollylarkin/smudge-custom-transport/transport/ws_transport/internal"
 	"github.com/gorilla/websocket"
-	lru "github.com/hashicorp/golang-lru"
 )
 
 const (
@@ -25,7 +24,7 @@ var (
 )
 
 type WsTransport struct {
-	cache              *lru.Cache
+	cache              *internal.ConnectionStore
 	wg                 sync.WaitGroup
 	remoteWsServerPort *int
 	wsBasePath         string
@@ -33,53 +32,8 @@ type WsTransport struct {
 	logger             smudge.Logger
 }
 
-// connCacheSet store connection in LRU cache.
-func (wst *WsTransport) connCacheSet(addr net.Addr, conn *internal.WsConnAdapter) (bool, error) {
-	h, _, err := net.SplitHostPort(addr.String())
-	if err != nil {
-		return false, fmt.Errorf("cant set conn cache for %s, %w", addr.String(), err)
-	}
-
-	return wst.cache.Add(h, conn), nil
-}
-
-// connCacheRemove remove connection from LRU cache.
-func (wst *WsTransport) connCacheRemove(addr net.Addr) bool {
-	h, _, err := net.SplitHostPort(addr.String())
-	if err != nil {
-		return false
-	}
-
-	return wst.cache.Remove(h)
-}
-
-// connCacheGet get connection from LRU cache.
-func (wst *WsTransport) connCacheGet(addr net.Addr) (*internal.WsConnAdapter, bool, error) {
-	h, _, err := net.SplitHostPort(addr.String())
-	if err != nil {
-		return nil, false, fmt.Errorf("cant get conn for addr %s from cache, %w", addr.String(), err)
-	}
-
-	conn, ok := wst.cache.Get(h)
-	if !ok {
-		wst.logger.Logf(smudge.LogDebug, "connection get cache miss for %s", addr.String())
-
-		return nil, false, nil
-	}
-
-	wsConn, ok := conn.(*internal.WsConnAdapter)
-	if !ok {
-		return nil, false, fmt.Errorf("cant get conn for addr %s from cache. Conn type isn't WsConnAdapter", addr.String())
-	}
-
-	return wsConn, true, nil
-}
-
 func NewWsTransport(logger smudge.Logger, remoteWsServerPort *int, wsBasePath string) (*WsTransport, error) {
-	cache, err := lru.New(MaxLRUCacheItems)
-	if err != nil {
-		return nil, fmt.Errorf("cant create connections cache: %w", err)
-	}
+	cache := internal.NewConnectionStore()
 
 	t := new(WsTransport)
 
@@ -100,7 +54,7 @@ func (wst *WsTransport) UpgageWebsocket(w http.ResponseWriter, r *http.Request) 
 		return fmt.Errorf("cant upgrade websocket connection: %w", err)
 	}
 
-	_, ok, err := wst.connCacheGet(wsconn.RemoteAddr())
+	_, ok, err := wst.cache.ConnCacheGet(wsconn.RemoteAddr())
 	if err != nil {
 		return err
 	}
@@ -114,7 +68,7 @@ func (wst *WsTransport) UpgageWebsocket(w http.ResponseWriter, r *http.Request) 
 		return err
 	}
 
-	_, err = wst.connCacheSet(adapter.RemoteAddr(), adapter)
+	err = wst.cache.ConnCacheSet(adapter.RemoteAddr(), adapter)
 	if err != nil {
 		return err
 	}
@@ -145,14 +99,14 @@ func (wst *WsTransport) Listen(network string, addr transport.SockAddr) (transpo
 
 func (wst *WsTransport) connCloseMonitor(connErrChan chan net.Addr) {
 	for addr := range connErrChan {
-		conn, ok, err := wst.connCacheGet(addr)
+		conn, ok, err := wst.cache.ConnCacheGet(addr)
 		if err != nil || !ok {
 			continue
 		}
 
 		conn.ActuallyClose()
 
-		wst.connCacheRemove(addr)
+		wst.cache.ConnCacheRemove(addr)
 
 		wst.logger.Logf(smudge.LogDebug, "Actually close %s", conn.RemoteAddr().String())
 	}
@@ -161,7 +115,7 @@ func (wst *WsTransport) connCloseMonitor(connErrChan chan net.Addr) {
 func (wst *WsTransport) Dial(ctx context.Context, laddr transport.SockAddr,
 	raddr transport.SockAddr,
 ) (transport.GenericConn, error) {
-	c, ok, err := wst.connCacheGet(raddr)
+	c, ok, err := wst.cache.ConnCacheGet(raddr)
 	if err != nil {
 		return nil, err
 	}
@@ -212,7 +166,7 @@ func (wst *WsTransport) Dial(ctx context.Context, laddr transport.SockAddr,
 		return nil, err
 	}
 
-	_, err = wst.connCacheSet(adapter.RemoteAddr(), adapter)
+	err = wst.cache.ConnCacheSet(adapter.RemoteAddr(), adapter)
 	if err != nil {
 		return nil, err
 	}
