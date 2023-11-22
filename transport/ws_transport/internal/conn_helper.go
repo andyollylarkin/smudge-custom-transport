@@ -28,7 +28,7 @@ func NewWsConnAdapter(r *http.Request, wsconn *websocket.Conn) (*WsConnAdapter, 
 func createConnWithRequest(r *http.Request, wsconn *websocket.Conn) (*WsConnAdapter, error) {
 	realIp := r.Header.Get("X-Real-IP")
 	// if X-Real-IP header is set, we behind nginx. Set connection remote address to X-Real-IP
-	if realIp == "" {
+	if realIp != "" {
 		// generate random port for unique detect hosts with same ip behind same gateway
 		port := generateRandomPort()
 
