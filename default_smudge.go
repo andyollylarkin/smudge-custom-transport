@@ -46,6 +46,16 @@ func RunGossip(ctx context.Context, trns transport.Transport, listenIp string, l
 	SetHeartbeatMillis(heartbeatMillis)
 	SetListenIP(ip)
 
+	// Redefine address to iface ipv4 address
+	if listenIp == "" {
+		if localIpv4Addr, err := TryGetLocalIPv4(); err != nil || localIpv4Addr.To4() == nil {
+			return fmt.Errorf("cant redefine listen interface to IPv4 address. Error: %w", err)
+		} else {
+			logger.Logf(LogInfo, "Listen IPv4 address: %s", localIpv4Addr.String())
+			SetListenIP(localIpv4Addr)
+		}
+	}
+
 	if ip.To4() == nil {
 		SetMaxBroadcastBytes(512) // 512 for IPv6
 	}

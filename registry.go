@@ -134,6 +134,33 @@ func GetLocalIP() (net.IP, error) {
 	return ip, nil
 }
 
+// TryGetLocalIP4 try get ipv4 listen address. If v4 address not set, return default listen address.
+func TryGetLocalIPv4() (net.IP, error) {
+	var ip net.IP
+
+	iface, err := getListenInterface()
+	if err != nil {
+		return nil, err
+	}
+
+	addrs, err := iface.Addrs()
+	if err != nil {
+		return ip, err
+	}
+
+	for _, addr := range addrs {
+		ip, _, err := net.ParseCIDR(addr.String())
+		if err != nil {
+			continue
+		}
+		if ip.To4() != nil {
+			return ip, nil
+		}
+	}
+
+	return GetLocalIP()
+}
+
 // AllNodes will return a list of all nodes known at the time of the request,
 // including nodes that have been marked as "dead" but haven't yet been
 // removed from the registry.

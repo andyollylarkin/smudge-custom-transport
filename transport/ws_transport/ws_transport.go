@@ -26,7 +26,7 @@ var (
 type WsTransport struct {
 	cache              *internal.ConnectionStore
 	wg                 sync.WaitGroup
-	listenAddr         transport.SockAddr
+	listenIp           net.IP
 	remoteWsServerPort *int
 	wsBasePath         string
 	connChan           chan *internal.WsConnAdapter
@@ -84,7 +84,6 @@ func (wst *WsTransport) Listen(network string, addr transport.SockAddr) (transpo
 		"using websocket transport. Some features not working properly (multicast, message sending.)")
 
 	muxConn, connErrChan := internal.NewMuxConn(addr, wst.logger)
-	wst.listenAddr = addr
 
 	go func() {
 		for c := range wst.connChan {
@@ -184,8 +183,16 @@ func (wst *WsTransport) Dial(ctx context.Context, laddr transport.SockAddr,
 }
 
 func (wst *WsTransport) getDialHeaders() (http.Header, error) {
+	var err error
+	if wst.listenIp == nil {
+		wst.listenIp, err = smudge.TryGetLocalIPv4()
+		if err != nil {
+			return http.Header{}, err
+		}
+	}
+
 	header := http.Header{}
-	h, _, err := net.SplitHostPort(wst.listenAddr.String())
+	h, _, err := net.SplitHostPort(wst.listenIp.String())
 	if err != nil {
 		return header, err
 	}
