@@ -55,11 +55,7 @@ func (wst *WsTransport) UpgageWebsocket(w http.ResponseWriter, r *http.Request) 
 		return fmt.Errorf("cant upgrade websocket connection: %w", err)
 	}
 
-	_, ok, err := wst.cache.ConnCacheGet(wsconn.RemoteAddr())
-	if err != nil {
-		return err
-	}
-
+	_, ok := wst.cache.ConnCacheGet(wsconn.RemoteAddr())
 	if ok {
 		return nil
 	}
@@ -71,10 +67,7 @@ func (wst *WsTransport) UpgageWebsocket(w http.ResponseWriter, r *http.Request) 
 		return err
 	}
 
-	err = wst.cache.ConnCacheSet(adapter.RemoteAddr(), adapter)
-	if err != nil {
-		return err
-	}
+	wst.cache.ConnCacheSet(adapter.RemoteAddr(), adapter)
 
 	wst.connChan <- adapter
 
@@ -102,8 +95,8 @@ func (wst *WsTransport) Listen(network string, addr transport.SockAddr) (transpo
 
 func (wst *WsTransport) connCloseMonitor(connErrChan chan net.Addr) {
 	for addr := range connErrChan {
-		conn, ok, err := wst.cache.ConnCacheGet(addr)
-		if err != nil || !ok {
+		conn, ok := wst.cache.ConnCacheGet(addr)
+		if !ok {
 			continue
 		}
 
@@ -118,10 +111,7 @@ func (wst *WsTransport) connCloseMonitor(connErrChan chan net.Addr) {
 func (wst *WsTransport) Dial(ctx context.Context, laddr transport.SockAddr,
 	raddr transport.SockAddr,
 ) (transport.GenericConn, error) {
-	c, ok, err := wst.cache.ConnCacheGet(raddr)
-	if err != nil {
-		return nil, err
-	}
+	c, ok := wst.cache.ConnCacheGet(raddr)
 
 	// return cached connection
 	if ok {
@@ -174,7 +164,7 @@ func (wst *WsTransport) Dial(ctx context.Context, laddr transport.SockAddr,
 		return nil, err
 	}
 
-	err = wst.cache.ConnCacheSet(adapter.RemoteAddr(), adapter)
+	wst.cache.ConnCacheSet(adapter.RemoteAddr(), adapter)
 	if err != nil {
 		return nil, err
 	}

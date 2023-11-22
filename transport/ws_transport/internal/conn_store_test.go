@@ -1,7 +1,6 @@
 package internal
 
 import (
-	"errors"
 	"net"
 	"sync"
 	"testing"
@@ -24,7 +23,6 @@ func TestConnectionStore_ConnCacheSet(t *testing.T) {
 		fields       fields
 		expectedAddr string
 		args         args
-		err          error
 	}{
 		{
 			name: "Set ok",
@@ -46,7 +44,6 @@ func TestConnectionStore_ConnCacheSet(t *testing.T) {
 				},
 			},
 			expectedAddr: "192.168.1.1:8888",
-			err:          nil,
 		},
 		{
 			name: "Set cant parse addr",
@@ -72,7 +69,6 @@ func TestConnectionStore_ConnCacheSet(t *testing.T) {
 				},
 			},
 			expectedAddr: "192.168.1.1:0",
-			err:          errors.New(""),
 		},
 	}
 	for _, tt := range tests {
@@ -81,12 +77,7 @@ func TestConnectionStore_ConnCacheSet(t *testing.T) {
 				conns: tt.fields.conns,
 				mu:    tt.fields.mu,
 			}
-			err := cs.ConnCacheSet(tt.args.addr, tt.args.conn)
-			if err == nil {
-				require.NoError(t, err)
-			} else {
-				require.Errorf(t, err, err.Error())
-			}
+			cs.ConnCacheSet(tt.args.addr, tt.args.conn)
 			require.NotNil(t, tt.args.conn)
 			assert.Equal(t, tt.expectedAddr, tt.args.conn.RemoteAddr().String())
 		})
@@ -109,7 +100,6 @@ func TestConnectionStore_ConnCacheGet(t *testing.T) {
 		args    args
 		want    *WsConnAdapter
 		want1   bool
-		wantErr bool
 	}{
 		{
 			name: "Get connection ok",
@@ -127,7 +117,6 @@ func TestConnectionStore_ConnCacheGet(t *testing.T) {
 			},
 			want:    &WsConnAdapter{},
 			want1:   true,
-			wantErr: false,
 		},
 		{
 			name: "Get connection when connection not set",
@@ -145,7 +134,6 @@ func TestConnectionStore_ConnCacheGet(t *testing.T) {
 			},
 			want:    &WsConnAdapter{},
 			want1:   false,
-			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
@@ -156,8 +144,7 @@ func TestConnectionStore_ConnCacheGet(t *testing.T) {
 			if tt.args.setConnectionToCache {
 				cs.ConnCacheSet(tt.args.addr, tt.want)
 			}
-			_, ok, err := cs.ConnCacheGet(tt.args.addr)
-			require.Equal(t, tt.wantErr, err != nil)
+			_, ok := cs.ConnCacheGet(tt.args.addr)
 			assert.Equal(t, tt.want1, ok)
 		})
 	}
