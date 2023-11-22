@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"fmt"
 	"net"
 	"sync"
 )
@@ -17,32 +18,58 @@ func NewConnectionStore() *ConnectionStore {
 }
 
 // ConnCacheSet store connection in cache.
-func (cs *ConnectionStore) ConnCacheSet(addr net.Addr, conn *WsConnAdapter) {
+func (cs *ConnectionStore) ConnCacheSet(addr net.Addr, conn *WsConnAdapter) error {
+	h, err := extractIpFromAddr(addr)
+	if err != nil {
+		return fmt.Errorf("cant set conn cache for %s, %w", addr.String(), err)
+	}
+
 	cs.mu.Lock()
 	defer cs.mu.Unlock()
 
-	cs.conns[addr.String()] = conn
+	cs.conns[h] = conn
+
+	return nil
 }
 
 // ConnCacheRemove remove connection from cache.
 func (cs *ConnectionStore) ConnCacheRemove(addr net.Addr) bool {
+	h, err := extractIpFromAddr(addr)
+	if err != nil {
+		return false
+	}
+
 	cs.mu.Lock()
 	defer cs.mu.Unlock()
 
-	delete(cs.conns, addr.String())
+	delete(cs.conns, h)
 
 	return true
 }
 
 // ConnCacheGet get connection from cache.
-func (cs *ConnectionStore) ConnCacheGet(addr net.Addr) (*WsConnAdapter, bool) {
+func (cs *ConnectionStore) ConnCacheGet(addr net.Addr) (*WsConnAdapter, bool, error) {
+	h, err := extractIpFromAddr(addr)
+	if err != nil {
+		return nil, false, fmt.Errorf("cant get conn for addr %s from cache, %w", addr.String(), err)
+	}
+
 	cs.mu.Lock()
 	defer cs.mu.Unlock()
 
-	conn, ok := cs.conns[addr.String()]
+	conn, ok := cs.conns[h]
 	if !ok {
-		return nil, false
+		return nil, false, nil
 	}
 
-	return conn, true
+	return conn, true, nil
+}
+
+func extractIpFromAddr(addr net.Addr) (string, error) {
+	h, _, err := net.SplitHostPort(addr.String())
+	if err != nil {
+		return "", err
+	}
+
+	return h, nil
 }
