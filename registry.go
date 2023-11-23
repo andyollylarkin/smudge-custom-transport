@@ -124,6 +124,7 @@ func GetLocalIP() (net.IP, error) {
 		if ipnet, ok := a.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
 			if ipnet.IP.To4() != nil {
 				ip = ipnet.IP.To4()
+				break
 			} else {
 				ip = ipnet.IP
 				break
