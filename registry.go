@@ -138,7 +138,12 @@ func GetLocalIP() (net.IP, error) {
 func TryGetLocalIPv4() (net.IP, error) {
 	var ip net.IP
 
-	iface, err := getListenInterface()
+	localIp, err := GetLocalIP()
+	if err != nil {
+		return nil, err
+	}
+
+	iface, err := findListenInterfaceByIP(localIp)
 	if err != nil {
 		return nil, err
 	}

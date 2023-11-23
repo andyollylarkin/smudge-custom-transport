@@ -323,6 +323,30 @@ func getListenInterface() (*net.Interface, error) {
 	return nil, errors.New("Could not determine the interface of the listen IP address")
 }
 
+func findListenInterfaceByIP(ifIp net.IP) (*net.Interface, error) {
+	ifaces, err := net.Interfaces()
+	if err == nil {
+		for _, iface := range ifaces {
+			addrs, err := iface.Addrs()
+			if err != nil {
+				logfWarn("Can not get addresses of interface %s", iface.Name)
+				continue
+			}
+			for _, addr := range addrs {
+				ip, _, err := net.ParseCIDR(addr.String())
+				if err != nil {
+					continue
+				}
+				if ip.String() == ifIp.String() {
+					logfInfo("Found interface with listen IP: %s", iface.Name)
+					return &iface, nil
+				}
+			}
+		}
+	}
+	return nil, errors.New("Could not determine the interface of the listen IP address")
+}
+
 // Returns a random slice of valid ping/forward request targets; i.e., not
 // this node, and not dead.
 func getTargetNodes(count int, exclude ...*Node) []*Node {
