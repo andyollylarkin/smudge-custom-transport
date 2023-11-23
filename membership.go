@@ -345,8 +345,9 @@ func getTargetNodes(count int, exclude ...*Node) []*Node {
 }
 
 func initGlobalHostEnvironment() {
+	ip, _ := TryGetLocalIPv4()
 	thisHost = &Node{
-		ip:         GetListenIP(),
+		ip:         ip,
 		port:       uint16(GetListenPort()),
 		timestamp:  GetNowInMillis(),
 		pingMillis: PingNoData,
